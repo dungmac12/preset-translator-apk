@@ -1,0 +1,45 @@
+name: Build Preset Translator APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Generate Android Platform Files
+        run: |
+          flutter create --platforms=android --org com.preset.translator .
+
+      - name: Inject Storage Permissions into AndroidManifest.xml
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i 's/<application/<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"\/><uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"\/><uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"\/><application android:requestLegacyExternalStorage="true"/g' "$MANIFEST"
+
+      - name: Install Dependencies & Build Release APK
+        run: |
+          flutter pub get
+          flutter build apk --release
+
+      - name: Upload APK for Download
+        uses: actions/upload-artifact@v4
+        with:
+          name: PresetTranslator-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          
